@@ -1,0 +1,297 @@
+        -:    0:Source:src/bignum_gcd.c
+        -:    0:Graph:/tmp/bignum_gcd_cov/bignum_gcd_cov.gcno
+        -:    0:Data:/tmp/bignum_gcd_cov/bignum_gcd_cov.gcda
+        -:    0:Runs:2
+        -:    1:/**
+        -:    2: * @file bignum_gcd.c
+        -:    3: * @brief C11 reference implementation of binary bignum GCD.
+        -:    4: * @version 1.0.0
+        -:    5: * @date 2026-08-22
+        -:    6: *
+        -:    7: * @details Uses the approved comparison, right-shift and subtraction modules
+        -:    8: * as the arithmetic primitives. Private fixed-size records make validation
+        -:    9: * failures and dependency failures atomic with respect to the caller's
+        -:   10: * destination. The implementation is deliberately straightforward so it can
+        -:   11: * serve as a correctness reference for the standalone YASM implementation.
+        -:   12: */
+        -:   13:#include "bignum_gcd.h"
+        -:   14:#include "bignum_cmp.h"
+        -:   15:#include "bignum_shift_right.h"
+        -:   16:#include "bignum_sub_bignum.h"
+        -:   17:#include <stdint.h>
+        -:   18:#include <string.h>
+        -:   19:
+        -:   20:/** @brief Returns whether two fixed-size bignum records overlap. */
+function bignum_gcd_overlap called 2072 returned 100% blocks executed 100%
+     2072:   21:static int bignum_gcd_overlap(const bignum_t *left, const bignum_t *right)
+        -:   22:{
+     2072:   23:    const uintptr_t a = (uintptr_t)left;
+     2072:   24:    const uintptr_t b = (uintptr_t)right;
+     2072:   25:    const uintptr_t size = (uintptr_t)sizeof(bignum_t);
+        -:   26:
+        -:   27:    /* Difference is evaluated only in the direction that cannot underflow. */
+     2072:   28:    return a < b ? (b - a) < size : (a - b) < size;
+branch  0 taken 1 (fallthrough)
+branch  1 taken 2071
+        -:   29:}
+        -:   30:
+        -:   31:/** @brief Normalizes a record and clears words outside its logical length. */
+function bignum_gcd_normalize called 5491 returned 100% blocks executed 90%
+     5491:   32:static void bignum_gcd_normalize(bignum_t *number)
+        -:   33:{
+     5491:   34:    size_t length = number->len;
+        -:   35:
+     5491:   36:    if (length > BIGNUM_CAPACITY) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 5491
+    #####:   37:        length = BIGNUM_CAPACITY;
+        -:   38:    }
+     5495:   39:    while (length != 0U && number->words[length - 1U] == UINT64_C(0)) {
+branch  0 taken 5491 (fallthrough)
+branch  1 taken 4
+branch  2 taken 4
+branch  3 taken 5487 (fallthrough)
+        4:   40:        --length;
+        -:   41:    }
+   141889:   42:    for (size_t index = length; index < BIGNUM_CAPACITY; ++index) {
+branch  0 taken 136398
+branch  1 taken 5491 (fallthrough)
+   136398:   43:        number->words[index] = UINT64_C(0);
+        -:   44:    }
+     5491:   45:    number->len = length;
+     5491:   46:}
+        -:   47:
+        -:   48:/**
+        -:   49: * @brief Doubles one private number without allocating memory.
+        -:   50: * @details The helper propagates carry from low to high words. GCD arithmetic
+        -:   51: * cannot require a value larger than the original operands, but the capacity
+        -:   52: * check remains explicit to preserve the public failure invariant.
+        -:   53: * @param[in,out] number Private normalized record to double in place.
+        -:   54: * @return BIGNUM_GCD_SUCCESS or BIGNUM_GCD_ERROR_CAPACITY.
+        -:   55: */
+function bignum_gcd_shift_left_one called 2395 returned 100% blocks executed 90%
+     2395:   56:static bignum_gcd_status_t bignum_gcd_shift_left_one(bignum_t *number)
+        -:   57:{
+     2395:   58:    uint64_t carry = UINT64_C(0);
+     2395:   59:    const size_t old_length = number->len;
+        -:   60:
+    36472:   61:    for (size_t index = 0U; index < old_length; ++index) {
+branch  0 taken 34077
+branch  1 taken 2395 (fallthrough)
+    34077:   62:        const uint64_t word = number->words[index];
+    34077:   63:        number->words[index] = (word << 1U) | carry;
+    34077:   64:        carry = word >> 63U;
+        -:   65:    }
+     2395:   66:    if (carry != UINT64_C(0)) {
+branch  0 taken 31 (fallthrough)
+branch  1 taken 2364
+       31:   67:        if (old_length == BIGNUM_CAPACITY) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 31
+    #####:   68:            return BIGNUM_GCD_ERROR_CAPACITY;
+        -:   69:        }
+       31:   70:        number->words[old_length] = carry;
+       31:   71:        number->len = old_length + 1U;
+        -:   72:    }
+     2395:   73:    bignum_gcd_normalize(number);
+call    0 returned 2395
+     2395:   74:    return BIGNUM_GCD_SUCCESS;
+        -:   75:}
+        -:   76:
+        -:   77:/** @brief Returns whether a normalized number is even, treating zero as even. */
+function bignum_gcd_is_even called 367330 returned 100% blocks executed 100%
+   367330:   78:static int bignum_gcd_is_even(const bignum_t *number)
+        -:   79:{
+   367330:   80:    return number->len == 0U || (number->words[0] & UINT64_C(1)) == UINT64_C(0);
+branch  0 taken 367330 (fallthrough)
+branch  1 taken 0
+branch  2 taken 185176 (fallthrough)
+branch  3 taken 182154
+        -:   81:}
+        -:   82:
+        -:   83:/**
+        -:   84: * @brief Computes GCD using Stein's binary Euclidean algorithm.
+        -:   85: * @details Validation is completed before private records are initialized.
+        -:   86: * The two source records are copied, so dependency calls may safely mutate
+        -:   87: * their private destinations and the caller's result is published last.
+        -:   88: */
+function bignum_gcd called 1040 returned 100% blocks executed 89%
+     1040:   89:bignum_gcd_status_t bignum_gcd(
+        -:   90:    bignum_t *result,
+        -:   91:    const bignum_t *a,
+        -:   92:    const bignum_t *b)
+        -:   93:{
+        -:   94:    bignum_t left;
+        -:   95:    bignum_t right;
+        -:   96:    bignum_t difference;
+     1040:   97:    size_t common_shift = 0U;
+        -:   98:    bignum_cmp_status_t comparison;
+        -:   99:
+     1040:  100:    if (result == NULL || a == NULL || b == NULL) {
+branch  0 taken 1039 (fallthrough)
+branch  1 taken 1
+branch  2 taken 1038 (fallthrough)
+branch  3 taken 1
+branch  4 taken 1 (fallthrough)
+branch  5 taken 1037
+        3:  101:        return BIGNUM_GCD_ERROR_NULL_ARG;
+        -:  102:    }
+     1037:  103:    if (bignum_gcd_overlap(result, a) || bignum_gcd_overlap(result, b)) {
+call    0 returned 1037
+branch  1 taken 1035 (fallthrough)
+branch  2 taken 2
+call    3 returned 1035
+branch  4 taken 1 (fallthrough)
+branch  5 taken 1034
+        3:  104:        return BIGNUM_GCD_ERROR_OVERLAP;
+        -:  105:    }
+     1034:  106:    if (a->len > BIGNUM_CAPACITY || b->len > BIGNUM_CAPACITY) {
+branch  0 taken 1033 (fallthrough)
+branch  1 taken 1
+branch  2 taken 0 (fallthrough)
+branch  3 taken 1033
+        1:  107:        return BIGNUM_GCD_ERROR_BAD_LENGTH;
+        -:  108:    }
+        -:  109:
+     1033:  110:    left = *a;
+     1033:  111:    right = *b;
+     1033:  112:    bignum_gcd_normalize(&left);
+call    0 returned 1033
+     1033:  113:    bignum_gcd_normalize(&right);
+call    0 returned 1033
+        -:  114:
+     1033:  115:    if (left.len == 0U) {
+branch  0 taken 2 (fallthrough)
+branch  1 taken 1031
+        2:  116:        *result = right;
+        2:  117:        return BIGNUM_GCD_SUCCESS;
+        -:  118:    }
+     1031:  119:    if (right.len == 0U) {
+branch  0 taken 1 (fallthrough)
+branch  1 taken 1030
+        1:  120:        *result = left;
+        1:  121:        return BIGNUM_GCD_SUCCESS;
+        -:  122:    }
+        -:  123:
+        -:  124:    /* Remove the common power of two before the odd subtraction loop. */
+     3425:  125:    while (bignum_gcd_is_even(&left) && bignum_gcd_is_even(&right)) {
+call    0 returned 3425
+branch  1 taken 2729 (fallthrough)
+branch  2 taken 696
+call    3 returned 2729
+branch  4 taken 2395
+branch  5 taken 334 (fallthrough)
+     4790:  126:        if (bignum_shift_right(&left, 1U) == BIGNUM_SHIFT_RIGHT_ERROR_NULL_ARG ||
+call    0 returned 2395
+branch  1 taken 2395 (fallthrough)
+branch  2 taken 0
+branch  3 taken 0 (fallthrough)
+branch  4 taken 2395
+     2395:  127:            bignum_shift_right(&right, 1U) == BIGNUM_SHIFT_RIGHT_ERROR_NULL_ARG) {
+call    0 returned 2395
+    #####:  128:            return BIGNUM_GCD_ERROR_CAPACITY;
+        -:  129:        }
+     2395:  130:        ++common_shift;
+        -:  131:    }
+        -:  132:
+    92436:  133:    while (left.len != 0U && right.len != 0U &&
+branch  0 taken 91406 (fallthrough)
+branch  1 taken 0
+   182812:  134:           !(left.len == 1U && left.words[0] == UINT64_C(1)) &&
+branch  0 taken 91406 (fallthrough)
+branch  1 taken 0
+branch  2 taken 45598 (fallthrough)
+branch  3 taken 45808
+branch  4 taken 45183 (fallthrough)
+branch  5 taken 415
+    90991:  135:           !(right.len == 1U && right.words[0] == UINT64_C(1))) {
+branch  0 taken 45881
+branch  1 taken 45110 (fallthrough)
+branch  2 taken 44681
+branch  3 taken 429 (fallthrough)
+   180443:  136:        while (bignum_gcd_is_even(&left)) {
+call    0 returned 180443
+branch  1 taken 89881
+branch  2 taken 90562 (fallthrough)
+    89881:  137:            if (bignum_shift_right(&left, 1U) == BIGNUM_SHIFT_RIGHT_ERROR_NULL_ARG) {
+call    0 returned 89881
+branch  1 taken 0 (fallthrough)
+branch  2 taken 89881
+    #####:  138:                return BIGNUM_GCD_ERROR_CAPACITY;
+        -:  139:            }
+        -:  140:        }
+   180733:  141:        while (bignum_gcd_is_even(&right)) {
+call    0 returned 180733
+branch  1 taken 90171
+branch  2 taken 90562 (fallthrough)
+    90171:  142:            if (bignum_shift_right(&right, 1U) == BIGNUM_SHIFT_RIGHT_ERROR_NULL_ARG) {
+call    0 returned 90171
+branch  1 taken 0 (fallthrough)
+branch  2 taken 90171
+    #####:  143:                return BIGNUM_GCD_ERROR_CAPACITY;
+        -:  144:            }
+        -:  145:        }
+    90562:  146:        comparison = bignum_cmp(&left, &right);
+call    0 returned 90562
+    90562:  147:        if (comparison == BIGNUM_CMP_ERROR_NULL) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 90562
+    #####:  148:            return BIGNUM_GCD_ERROR_CAPACITY;
+        -:  149:        }
+    90562:  150:        if (comparison == BIGNUM_CMP_GREATER) {
+branch  0 taken 44960 (fallthrough)
+branch  1 taken 45602
+    44960:  151:            if (bignum_sub_bignum(&difference, &left, &right) != BIGNUM_SUB_SUCCESS) {
+call    0 returned 44960
+branch  1 taken 0 (fallthrough)
+branch  2 taken 44960
+    #####:  152:                return BIGNUM_GCD_ERROR_CAPACITY;
+        -:  153:            }
+    44960:  154:            left = difference;
+    45602:  155:        } else if (comparison == BIGNUM_CMP_LESS) {
+branch  0 taken 45416 (fallthrough)
+branch  1 taken 186
+    45416:  156:            if (bignum_sub_bignum(&difference, &right, &left) != BIGNUM_SUB_SUCCESS) {
+call    0 returned 45416
+branch  1 taken 0 (fallthrough)
+branch  2 taken 45416
+    #####:  157:                return BIGNUM_GCD_ERROR_CAPACITY;
+        -:  158:            }
+    45416:  159:            right = difference;
+        -:  160:        } else {
+      186:  161:            break;
+        -:  162:        }
+        -:  163:    }
+        -:  164:
+     1030:  165:    if (left.len == 0U) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 1030
+    #####:  166:        left = right;
+     1030:  167:    } else if (right.len == 0U) {
+branch  0 taken 0 (fallthrough)
+branch  1 taken 1030
+    #####:  168:        right = left;
+     1030:  169:    } else if (left.len == 1U && left.words[0] == UINT64_C(1)) {
+branch  0 taken 1030 (fallthrough)
+branch  1 taken 0
+branch  2 taken 415 (fallthrough)
+branch  3 taken 615
+      415:  170:        left = left;
+        -:  171:    } else {
+      615:  172:        left = right;
+        -:  173:    }
+     1030:  174:    bignum_gcd_normalize(&left);
+call    0 returned 1030
+     3425:  175:    while (common_shift-- != 0U) {
+branch  0 taken 2395
+branch  1 taken 1030 (fallthrough)
+     2395:  176:        if (bignum_gcd_shift_left_one(&left) != BIGNUM_GCD_SUCCESS) {
+call    0 returned 2395
+branch  1 taken 0 (fallthrough)
+branch  2 taken 2395
+    #####:  177:            return BIGNUM_GCD_ERROR_CAPACITY;
+        -:  178:        }
+        -:  179:    }
+     1030:  180:    *result = left;
+     1030:  181:    return BIGNUM_GCD_SUCCESS;
+        -:  182:}

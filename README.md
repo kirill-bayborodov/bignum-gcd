@@ -150,6 +150,8 @@ The test files are organized as follows:
 | `tests/test_bignum_gcd_runner.c` | Distribution-linkage and public-header smoke test |
 | `tests/benchmark_adapter/test_bignum_gcd_benchmark_adapter.c` | Workload validation, deterministic state generation, operation callback and checksum |
 
+The artifact-level test checklist, template comparison and coverage interpretation are in [`docs/test_qg_audit.md`](docs/test_qg_audit.md). The reproducible C11 gcov source report is [`docs/coverage/bignum_gcd.c.gcov`](docs/coverage/bignum_gcd.c.gcov).
+
 ## Benchmarks
 
 The benchmark sources are:

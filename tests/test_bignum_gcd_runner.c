@@ -11,6 +11,13 @@
 #include <stdio.h>
 #include <string.h>
 
+/**
+ * @brief Verifies the distributed GCD API through a minimal executable.
+ * @return EXIT_SUCCESS only after the named status and exact gcd(84,30)=6 pass.
+ * @details The Makefile compiles this source against the generated public header
+ * and object distribution. A sentinel-filled destination proves successful
+ * publication; assertion failure returns a non-zero process status.
+ */
 int main(void)
 {
     const bignum_t a = { .words = { 84U }, .len = 1U };

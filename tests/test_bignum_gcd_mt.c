@@ -16,13 +16,26 @@
 #define GCD_MT_THREADS 8U
 #define GCD_MT_ITERATIONS 2000U
 
+/**
+ * @brief Owns one independent worker's GCD fixtures and expected result.
+ * @details The worker record is created and initialized by main before thread
+ * creation. Its fields are accessed by only one worker until pthread_join makes
+ * the final result visible to the main thread.
+ */
 typedef struct gcd_worker {
-    bignum_t a;
-    bignum_t b;
-    bignum_t result;
-    uint64_t expected;
+    bignum_t a; /**< [in] First normalized operand owned by this worker. */
+    bignum_t b; /**< [in] Second normalized operand owned by this worker. */
+    bignum_t result; /**< [out] Caller-owned result record written by the worker. */
+    uint64_t expected; /**< [in] Exact expected one-word GCD for this fixture. */
 } gcd_worker_t;
 
+/**
+ * @brief Repeats one worker's independent GCD operation.
+ * @param[in,out] opaque Non-NULL pointer to this worker's private record.
+ * @return NULL after all iterations complete; assertions abort on status failure.
+ * @details Each iteration uses separate records and therefore shares no mutable
+ * bignum state with other workers. The fixed count tests reentrancy under load.
+ */
 static void *gcd_worker_run(void *opaque)
 {
     gcd_worker_t *worker = (gcd_worker_t *)opaque;
@@ -32,6 +45,13 @@ static void *gcd_worker_run(void *opaque)
     return NULL;
 }
 
+/**
+ * @brief Runs the concurrent reentrancy and publication-order test.
+ * @return EXIT_SUCCESS when all joined workers produced their expected GCD.
+ * @details Eight workers compute gcd(a,a+1)=1 for 2,000 iterations. The main
+ * thread initializes all inputs before pthread_create, joins every worker, and
+ * checks results only after join establishes the required happens-before edge.
+ */
 int main(void)
 {
     pthread_t threads[GCD_MT_THREADS];

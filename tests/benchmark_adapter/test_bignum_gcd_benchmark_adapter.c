@@ -13,6 +13,13 @@
 #include <stdio.h>
 #include <string.h>
 
+/**
+ * @brief Creates the fixed valid workload used by adapter tests.
+ * @return A caller-owned descriptor with documented GCD axes, seed 0x9e3779b97f4a7c15,
+ * five warmup calls and sixteen immutable data records.
+ * @details Keeping every string and numeric field fixed makes callback output
+ * reproducible and allows validation failures to be isolated to one axis.
+ */
 static benchmark_workload_t make_workload(void)
 {
     return (benchmark_workload_t){
@@ -28,6 +35,12 @@ static benchmark_workload_t make_workload(void)
     };
 }
 
+/**
+ * @brief Verifies accepted and rejected benchmark profile vocabulary.
+ * @details The fixed workload must return the named SUCCESS status. Replacing
+ * operation_kind with `not-a-gcd-operation` must return INVALID_PROFILE, while
+ * a NULL descriptor must return NULL_ARGUMENT; no callback state is published.
+ */
 static void test_validation(void)
 {
     benchmark_workload_t workload = make_workload();
@@ -37,6 +50,12 @@ static void test_validation(void)
     assert(bignum_gcd_benchmark_validate_workload(NULL) == BIGNUM_GCD_BENCHMARK_STATUS_NULL_ARGUMENT);
 }
 
+/**
+ * @brief Verifies deterministic initialization, operation and checksum callbacks.
+ * @details Two equal sequence-indexed states must be byte-identical. The
+ * operation callback must return the framework SUCCESS status for valid records,
+ * and checksum must be non-zero after GCD execution, proving observable output.
+ */
 static void test_callbacks(void)
 {
     benchmark_adapter_t adapter;
@@ -57,6 +76,12 @@ static void test_callbacks(void)
     assert(checksum != 0U);
 }
 
+/**
+ * @brief Runs benchmark-adapter validation and callback contract tests.
+ * @return EXIT_SUCCESS after all named statuses and deterministic invariants pass.
+ * @details Assertions are the failure oracle; the process exits non-zero on any
+ * invalid profile handling, state mismatch, operation failure or zero checksum.
+ */
 int main(void)
 {
     puts("--- Starting bignum_gcd benchmark adapter tests ---");

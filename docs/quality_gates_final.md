@@ -1,6 +1,6 @@
 # bignum_gcd Quality Gates Report
 
-**Revision:** 1.0.0
+**Revision:** 1.1.0
 **Date:** 2026-08-22
 **Backend scope:** C11 reference and standalone YASM x86-64 implementations
 **Repository:** `kirill-bayborodov/bignum-gcd`
@@ -21,6 +21,8 @@ The public contract validates null pointers, input lengths and result/input over
 | ASM tests | `make test CONFIG=release USE_ASM=yes` | PASS, `0 / 5 failed` |
 | Deterministic coverage | identities, known values, normalization, invalid input, overlap | PASS |
 | Model/fuzz coverage | 1,024 fixed-seed unsigned-128-bit oracle vectors | PASS |
+| C11 line coverage | GCC gcov: 77/88 lines, 87.50% | PASS; defensive unreachable branches documented |
+| C11 branch coverage | GCC gcov: 88/88 branches executed, 80.68% taken | PASS; all reachable branch directions exercised |
 | Capacity boundary | 2,048-bit power-of-two operands | PASS |
 | MT/reentrancy | eight workers, independent records, 2,000 calls per worker | PASS |
 | AddressSanitizer | `make test_sanitize SAN=address CONFIG=release USE_ASM=no` | PASS, 0 sanitizer issues |
@@ -30,7 +32,8 @@ The public contract validates null pointers, input lengths and result/input over
 | Install | `make install CONFIG=release` | PASS; distribution runner passed |
 | Distribution | `make dist CONFIG=release` | PASS; distribution runner passed |
 | JSON manifests | `jq empty benchmarks/profiles/bignum_gcd_*.json` | PASS |
-| Doxygen configuration | `Doxyfile`, public header and source comments | PASS configuration present |
+| Doxygen configuration | `Doxyfile`, public header, source and test comments | PASS; 0 warnings |
+| Test artifact checklist | `docs/test_qg_audit.md`, per-file DOC-1..DOC-12 evidence | PASS |
 | Protected files | `git diff -- Makefile .github` | PASS; no changes |
 | Stale template scan | template/shift identifiers in module-owned files | PASS; none found |
 
@@ -54,7 +57,7 @@ The local framework was downloaded into `libs/benchmark-framework/dist` from the
 
 ## Documentation gates
 
-The README follows the template section order: Distribution, Features, Dependencies, API, Contract, Build and test, Benchmarks, Perf workflow, Installation and distribution, Linking the object file, Contributing and License. The header documents parameters, return statuses, preconditions, postconditions, aliasing, normalization, thread safety, ownership and complexity. The benchmark adapter and JSON profile companions document their domain-specific vocabulary.
+The README follows the template section order: Distribution, Features, Dependencies, API, Contract, Build and test, Benchmarks, Perf workflow, Installation and distribution, Linking the object file, Contributing and License. The header documents parameters, return statuses, preconditions, postconditions, aliasing, normalization, thread safety, ownership and complexity. The benchmark adapter and JSON profile companions document their domain-specific vocabulary. Test documentation is audited independently in `docs/test_qg_audit.md`; each test artifact documents its scenario, exact oracle, expected status/output and invariant.
 
 ## Limitations
 
