@@ -1,8 +1,8 @@
-# How-to: `bignum_template_full.json`
+# How-to: `bignum_gcd_full.json`
 
 ## Назначение
 
-`bignum_template_full.json` — расширенная domain-specific matrix для анализа производительности in-place left shift. Она предназначена для подготовленного controlled run, а не для быстрого CI smoke. Manifest сохраняет все meaningful bignum axes: zero/mixed input, zero/bit/word/combined/random/mixed shift amount, operand word length, measurement boundary and near-capacity state.
+`bignum_gcd_full.json` — расширенная domain-specific matrix для анализа производительности binary GCD. Она предназначена для подготовленного controlled run, а не для быстрого CI smoke. Manifest сохраняет все meaningful bignum axes: zero/mixed input and binary-euclid operation, operand word length, measurement boundary and near-capacity state.
 
 The C11 `bench_matrix` runner from pinned `benchmark-framework v1.0.0` accepts the JSON document and launches project-owned ST/MT bignum adapter binaries. The runner writes a raw samples document; the C11 `benchmark_stats` tool parses it through public `json-lib` and emits a metrics/regression summary.
 
@@ -10,7 +10,7 @@ The C11 `bench_matrix` runner from pinned `benchmark-framework v1.0.0` accepts t
 
 | Family | Profiles | What it isolates |
 |---|---:|---|
-| Zero path | 1 | No-op left shift over a zero source record |
+| Zero path | 1 | GCD of two zero source records |
 | One-word paths | 2 | Zero and sub-word shifts without length expansion |
 | Quarter/half lengths | 4 | Bit, word and combined shift costs at bounded multi-word sizes |
 | Variable/mixed | 2 | Reproducible randomized and branch-diverse workload behavior |
@@ -24,10 +24,10 @@ Use fixed seed, thread count, data-count and iteration counts when a result will
 
 ```bash
 libs/benchmark-framework/build/tools/bench_matrix \
-  --manifest benchmarks/profiles/bignum_template_full.json \
-  --output benchmarks/reports/bignum_template_full_matrix.json \
-  --st-binary bin/bench_bignum_template \
-  --mt-binary bin/bench_bignum_template_mt \
+  --manifest benchmarks/profiles/bignum_gcd_full.json \
+  --output benchmarks/reports/bignum_gcd_full_matrix.json \
+  --st-binary bin/bench_bignum_gcd \
+  --mt-binary bin/bench_bignum_gcd_mt \
   --repetitions 7 \
   --iterations 200000000 \
   --mt-total-iterations 320000000 \
@@ -46,8 +46,8 @@ Create a candidate summary first:
 
 ```bash
 libs/benchmark-framework/build/tools/benchmark_stats \
-  --input benchmarks/reports/bignum_template_full_matrix.json \
-  --output benchmarks/reports/bignum_template_full_summary.json
+  --input benchmarks/reports/bignum_gcd_full_matrix.json \
+  --output benchmarks/reports/bignum_gcd_full_summary.json
 ```
 
 After review, preserve the raw matrix JSON as the baseline because it contains all repetitions and profile metadata. Compare a later candidate as follows:
@@ -64,13 +64,13 @@ A `regression:true` field means the candidate median exceeded both the configure
 
 ## Bignum transport vocabulary
 
-`operation_kind` must begin with `shift-`. It is not legal to substitute generic example values such as `xor` or `rotate`. The adapter validates these values before it initializes bignum state, therefore malformed profiles fail before their data become benchmark samples.
+`operation_kind must equal `binary-euclid`. It is not legal to substitute generic example values such as `xor` or `rotate`. The adapter validates these values before it initializes bignum state, therefore malformed profiles fail before their data become benchmark samples.
 
-| `operation_kind` | Adapter shift path |
+| `operation_kind` | Binary Euclidean GCD path |
 |---|---|
-| `shift-zero` | Always zero shift amount |
-| `shift-bit` | Deterministic representable sub-word amount |
-| `shift-word` | Deterministic representable whole-word amount |
-| `shift-combined` | Deterministic representable whole-word-plus-bit amount |
-| `shift-random` | Deterministic representable amount derived from seed/iteration |
-| `shift-mixed` | Stable rotation through zero, bit, word and combined paths |
+| `binary-euclid` | Always zero GCD operation |
+| `binary-euclid` | Deterministic representable sub-word amount |
+| `binary-euclid` | Deterministic representable whole-word amount |
+| `binary-euclid` | Deterministic representable whole-word-plus-bit amount |
+| `binary-euclid` | Deterministic representable amount derived from seed/iteration |
+| `binary-euclid` | Stable rotation through zero, bit, word and combined paths |

@@ -1,15 +1,15 @@
-# How-to: `bignum_template_standard.json`
+# How-to: `bignum_gcd_standard.json`
 
 ## Назначение
 
-`bignum_template_standard.json` — компактная versioned matrix для функциональной проверки и регрессионного baseline операции `bignum_template`. Manifest использует schema version `1`, которую читает C11-инструмент `bench_matrix` из pinned `benchmark-framework v1.0.0`.
+`bignum_gcd_standard.json` — компактная versioned matrix для функциональной проверки и регрессионного baseline операции `bignum_gcd`. Manifest использует schema version `1`, которую читает C11-инструмент `bench_matrix` из pinned `benchmark-framework v1.0.0`.
 
 > Manifest не описывает generic byte-transform. Он переносит bignum semantics через нейтральные transport fields benchmark framework.
 
 | JSON field | Значение в manifest | Bignum interpretation |
 |---|---|---|
 | `input_kind` | `zero`, `nonzero`, `mixed` | Форма исходного `bignum_t` dataset |
-| `operation_kind` | `shift-zero`, `shift-bit`, `shift-word`, `shift-combined`, `shift-random`, `shift-mixed` | Выбор representable left-shift amount |
+| `operation_kind` | `binary-euclid`, `binary-euclid`, `binary-euclid`, `binary-euclid`, `binary-euclid`, `binary-euclid` | Выбор representable binary GCD amount |
 | `measure_mode` | `end-to-end`, `kernel-only` | Включает либо исключает preparation copy из timed interval |
 | `size_profile` | `one`, `quarter`, `half`, `variable`, `near-capacity` | Logical word length of input `bignum_t` |
 | `capacity_profile` | `normal`, `near-capacity` | Storage-boundary workload condition |
@@ -20,10 +20,10 @@
 
 ```bash
 libs/benchmark-framework/build/tools/bench_matrix \
-  --manifest benchmarks/profiles/bignum_template_standard.json \
-  --output benchmarks/reports/bignum_template_standard_matrix.json \
-  --st-binary bin/bench_bignum_template \
-  --mt-binary bin/bench_bignum_template_mt \
+  --manifest benchmarks/profiles/bignum_gcd_standard.json \
+  --output benchmarks/reports/bignum_gcd_standard_matrix.json \
+  --st-binary bin/bench_bignum_gcd \
+  --mt-binary bin/bench_bignum_gcd_mt \
   --repetitions 1 \
   --iterations 1001 \
   --mt-total-iterations 2000 \
@@ -42,8 +42,8 @@ Aggregate a candidate without a baseline first:
 
 ```bash
 libs/benchmark-framework/build/tools/benchmark_stats \
-  --input benchmarks/reports/bignum_template_standard_matrix.json \
-  --output benchmarks/reports/bignum_template_standard_summary.json
+  --input benchmarks/reports/bignum_gcd_standard_matrix.json \
+  --output benchmarks/reports/bignum_gcd_standard_summary.json
 ```
 
 After human review, compare a later candidate to the approved matrix using identical manifests and measurement conditions:
