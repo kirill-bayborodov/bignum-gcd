@@ -19,7 +19,7 @@
 После approved Makefile wiring adapter binaries будут передаваться C11 runner напрямую. Эквивалентная команда имеет следующую форму:
 
 ```bash
-libs/benchmark-framework/build/tools/bench_matrix \
+libs/benchmark-framework/dist/tools/bench_matrix \
   --manifest benchmarks/profiles/bignum_gcd_standard.json \
   --output benchmarks/reports/bignum_gcd_standard_matrix.json \
   --st-binary bin/bench_bignum_gcd \
@@ -41,7 +41,7 @@ The expected matrix contains **8 profiles × 2 modes × repetitions** samples. E
 Aggregate a candidate without a baseline first:
 
 ```bash
-libs/benchmark-framework/build/tools/benchmark_stats \
+libs/benchmark-framework/dist/tools/benchmark_stats \
   --input benchmarks/reports/bignum_gcd_standard_matrix.json \
   --output benchmarks/reports/bignum_gcd_standard_summary.json
 ```
@@ -49,7 +49,7 @@ libs/benchmark-framework/build/tools/benchmark_stats \
 After human review, compare a later candidate to the approved matrix using identical manifests and measurement conditions:
 
 ```bash
-libs/benchmark-framework/build/tools/benchmark_stats \
+libs/benchmark-framework/dist/tools/benchmark_stats \
   --input benchmarks/reports/candidate_matrix.json \
   --baseline benchmarks/reports/reviewed_baseline_matrix.json \
   --output benchmarks/reports/candidate_summary.json \

@@ -23,7 +23,7 @@ The document declares **12 profiles**. A run with `R` repetitions therefore prod
 Use fixed seed, thread count, data-count and iteration counts when a result will become a baseline. The following command shows the expected C11 runner contract; Makefile integration will expose the same parameters after its separate approval.
 
 ```bash
-libs/benchmark-framework/build/tools/bench_matrix \
+libs/benchmark-framework/dist/tools/bench_matrix \
   --manifest benchmarks/profiles/bignum_gcd_full.json \
   --output benchmarks/reports/bignum_gcd_full_matrix.json \
   --st-binary bin/bench_bignum_gcd \
@@ -45,7 +45,7 @@ Do not compare this result to data collected with different manifest contents, c
 Create a candidate summary first:
 
 ```bash
-libs/benchmark-framework/build/tools/benchmark_stats \
+libs/benchmark-framework/dist/tools/benchmark_stats \
   --input benchmarks/reports/bignum_gcd_full_matrix.json \
   --output benchmarks/reports/bignum_gcd_full_summary.json
 ```
@@ -53,7 +53,7 @@ libs/benchmark-framework/build/tools/benchmark_stats \
 After review, preserve the raw matrix JSON as the baseline because it contains all repetitions and profile metadata. Compare a later candidate as follows:
 
 ```bash
-libs/benchmark-framework/build/tools/benchmark_stats \
+libs/benchmark-framework/dist/tools/benchmark_stats \
   --input benchmarks/reports/candidate_full_matrix.json \
   --baseline benchmarks/reports/reviewed_full_matrix.json \
   --output benchmarks/reports/candidate_full_summary.json \
