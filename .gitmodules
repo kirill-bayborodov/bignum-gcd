@@ -1,3 +1,0 @@
-[submodule "libs/bignum-sub-bignum"]
-	path = libs/bignum-sub-bignum
-	url = https://github.com/kirill-bayborodov/bignum-sub-bignum.git
