@@ -1,6 +1,3 @@
-[submodule "libs/bignum-cmp"]
-	path = libs/bignum-cmp
-	url = https://github.com/kirill-bayborodov/bignum-cmp.git
 [submodule "libs/bignum-shift-right"]
 	path = libs/bignum-shift-right
 	url = https://github.com/kirill-bayborodov/bignum-shift-right.git
