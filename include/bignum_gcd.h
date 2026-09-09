@@ -57,7 +57,7 @@ typedef enum bignum_gcd_status {
  *        remains owned by the caller and is not modified.
  * @param[in] b Caller-owned normalized non-negative second operand. Its storage
  *        remains owned by the caller and is not modified; it may alias a.
- * @param[out,opt] cycles Optional pointer to uint64_t to receive the execution
+ * @param[out] cycles Optional pointer to uint64_t to receive the execution
  *        time in CPU cycles. If NULL, timing is not performed.
  * @return bignum_gcd_status_t BIGNUM_GCD_SUCCESS on success, or the named
  *         validation/capacity status explaining why result was not changed.
@@ -80,6 +80,7 @@ bignum_gcd_status_t bignum_gcd(
     const bignum_t *a,
     const bignum_t *b,
     uint64_t *cycles);
+
 
 #ifdef __cplusplus
 }
