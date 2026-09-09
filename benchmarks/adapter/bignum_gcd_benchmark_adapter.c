@@ -105,9 +105,11 @@ static benchmark_adapter_status_t gcd_operation(void *opaque, uint64_t iteration
 {
     bignum_gcd_benchmark_state_t *state = opaque;
     bignum_gcd_status_t status;
+    uint64_t cycles = 0;
     (void)iteration; (void)workload; (void)adapter_context;
     if (state == NULL) return BENCHMARK_ADAPTER_STATUS_INPUT_ERROR;
-    status = bignum_gcd(&state->result, &state->a, &state->b);
+    status = bignum_gcd(&state->result, &state->a, &state->b, &cycles);
+    (void)cycles; // cycles can be logged or ignored
     return status == BIGNUM_GCD_SUCCESS ? BENCHMARK_ADAPTER_STATUS_SUCCESS
                                          : BENCHMARK_ADAPTER_STATUS_OPERATION_ERROR;
 }

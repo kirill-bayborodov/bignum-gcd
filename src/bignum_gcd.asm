@@ -1,5 +1,6 @@
 ; bignum_gcd.asm — standalone x86-64 implementation of Stein's binary GCD.
-; ABI: rdi=result, rsi=a, rdx=b; eax=bignum_gcd_status_t.
+; ABI: rdi=result, rsi=a, rdx=b, rcx=cycles_ptr (optional, can be NULL)
+; eax=bignum_gcd_status_t.
 ; Private records are used until successful transactional publication.
 BITS 64
 DEFAULT REL
@@ -183,9 +184,22 @@ bignum_gcd:
     push r14
     push r15
     sub rsp, FRAME
-    mov r12, rdi
-    mov r13, rsi
-    mov r14, rdx
+    mov r12, rdi      ; result
+    mov r13, rsi      ; a
+    mov r14, rdx      ; b
+    mov r15, rcx      ; cycles_ptr (optional)
+
+    ; --- Start measuring time if cycles_ptr != NULL ---
+    test r15, r15
+    jz .skip_timing_start
+    xor rax, rax
+    xor rdx, rdx
+    cpuid                ; serialize
+    rdtsc
+    shl rdx, 32
+    or rax, rdx
+    mov [rsp+FRAME-8], rax  ; save start time near top of stack
+.skip_timing_start:
 
     test r12, r12
     jz .null
@@ -200,7 +214,7 @@ bignum_gcd:
     cmp rax, CAP
     ja .length
 
-    ; Compare addresses by distance so every complete/partial result overlap is rejected.
+    ; Check for overlap of result with inputs
     cmp r12, r13
     jb .result_before_a
     mov rax, r12
@@ -334,8 +348,23 @@ bignum_gcd:
     lea rsi, [rsp+LEFT]
 .publish:
     call asm_copy
+
+    ; --- Stop measuring time and store if cycles_ptr != NULL ---
+    test r15, r15
+    jz .skip_timing_end
+    xor rax, rax
+    xor rdx, rdx
+    rdtsc
+    shl rdx, 32
+    or rax, rdx
+    mov rbx, [rsp+FRAME-8]  ; load start time
+    sub rax, rbx            ; elapsed cycles
+    mov [r15], rax          ; store elapsed cycles
+.skip_timing_end:
+
     mov eax, SUCCESS
     jmp .return
+
 .null:
     mov eax, ERR_NULL
     jmp .return
@@ -347,6 +376,7 @@ bignum_gcd:
     jmp .return
 .capacity:
     mov eax, ERR_CAPACITY
+    jmp .return
 .return:
     add rsp, FRAME
     pop r15

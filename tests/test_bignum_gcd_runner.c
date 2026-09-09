@@ -23,9 +23,11 @@ int main(void)
     const bignum_t a = { .words = { 84U }, .len = 1U };
     const bignum_t b = { .words = { 30U }, .len = 1U };
     bignum_t result;
+    uint64_t cycles = 0;
     memset(&result, 0xa5, sizeof(result));
     printf("Running test: test_bignum_gcd_runner... ");
-    assert(bignum_gcd(&result, &a, &b) == BIGNUM_GCD_SUCCESS);
+    assert(bignum_gcd(&result, &a, &b, &cycles) == BIGNUM_GCD_SUCCESS);
+    (void)cycles; // cycles can be logged or ignored
     assert(result.len == 1U && result.words[0] == 6U);
     puts("PASSED");
     return 0;

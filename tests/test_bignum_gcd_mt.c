@@ -39,8 +39,10 @@ typedef struct gcd_worker {
 static void *gcd_worker_run(void *opaque)
 {
     gcd_worker_t *worker = (gcd_worker_t *)opaque;
+    uint64_t cycles = 0;
     for (unsigned i = 0U; i < GCD_MT_ITERATIONS; ++i) {
-        assert(bignum_gcd(&worker->result, &worker->a, &worker->b) == BIGNUM_GCD_SUCCESS);
+        assert(bignum_gcd(&worker->result, &worker->a, &worker->b, &cycles) == BIGNUM_GCD_SUCCESS);
+        (void)cycles; // cycles can be logged or ignored
     }
     return NULL;
 }

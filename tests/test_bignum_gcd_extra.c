@@ -94,10 +94,12 @@ static void test_fuzz_against_model(void)
         const uint128_t a128 = ((uint128_t)next_word() << 64U) | next_word();
         const uint128_t b128 = ((uint128_t)next_word() << 64U) | next_word();
         bignum_t a, b, result, before_a, before_b;
+        uint64_t cycles = 0;
         from128(&a, a128); from128(&b, b128);
         before_a = a; before_b = b;
         memset(&result, 0xa5, sizeof(result));
-        assert(bignum_gcd(&result, &a, &b) == BIGNUM_GCD_SUCCESS);
+        assert(bignum_gcd(&result, &a, &b, &cycles) == BIGNUM_GCD_SUCCESS);
+        (void)cycles; // cycles can be logged or used if needed
         assert(to128(&result) == gcd128(a128, b128));
         assert(memcmp(&a, &before_a, sizeof(a)) == 0);
         assert(memcmp(&b, &before_b, sizeof(b)) == 0);
@@ -119,7 +121,9 @@ static void test_large_power_two_boundary(void)
     a.len = BIGNUM_CAPACITY; b.len = BIGNUM_CAPACITY;
     a.words[BIGNUM_CAPACITY - 1U] = UINT64_C(1) << 63U;
     b.words[BIGNUM_CAPACITY - 1U] = UINT64_C(1) << 62U;
-    assert(bignum_gcd(&result, &a, &b) == BIGNUM_GCD_SUCCESS);
+    uint64_t cycles = 0;
+    assert(bignum_gcd(&result, &a, &b, &cycles) == BIGNUM_GCD_SUCCESS);
+    (void)cycles;
     assert(result.len == BIGNUM_CAPACITY);
     assert(result.words[result.len - 1U] == UINT64_C(1) << 62U);
 }
@@ -140,7 +144,7 @@ static void test_partial_overlap(void)
     a->words[0] = 84U; a->len = 1U;
     b.words[0] = 30U; b.len = 1U;
     before = *result;
-    assert(bignum_gcd(result, a, &b) == BIGNUM_GCD_ERROR_OVERLAP);
+    assert(bignum_gcd(result, a, &b, NULL) == BIGNUM_GCD_ERROR_OVERLAP);
     assert(memcmp(result, &before, sizeof(*result)) == 0);
 }
 

@@ -58,9 +58,13 @@ static void expect_gcd(const uint64_t *aw, size_t alen, const uint64_t *bw,
                        size_t blen, const uint64_t *ew, size_t elen)
 {
     bignum_t a, b, expected, result;
-    set_words(&a, aw, alen); set_words(&b, bw, blen); set_words(&expected, ew, elen);
+    uint64_t cycles = 0;
+    set_words(&a, aw, alen);
+    set_words(&b, bw, blen);
+    set_words(&expected, ew, elen);
     memset(&result, 0xa5, sizeof(result));
-    assert(bignum_gcd(&result, &a, &b) == BIGNUM_GCD_SUCCESS);
+    assert(bignum_gcd(&result, &a, &b, &cycles) == BIGNUM_GCD_SUCCESS);
+    (void)cycles; // cycles can be logged or used if needed
     assert(equal_number(&result, &expected));
 }
 
@@ -117,7 +121,9 @@ static void test_same_operand_and_normalization(void)
     const uint64_t words[] = { UINT64_C(0x55), 0U, 0U };
     set_words(&a, words, 3U);
     memset(&result, 0xa5, sizeof(result));
-    assert(bignum_gcd(&result, &a, &a) == BIGNUM_GCD_SUCCESS);
+    uint64_t cycles = 0;
+    assert(bignum_gcd(&result, &a, &a, &cycles) == BIGNUM_GCD_SUCCESS);
+    (void)cycles;
     assert(result.len == 1U && result.words[0] == UINT64_C(0x55));
     for (size_t i = 1U; i < BIGNUM_CAPACITY; ++i) assert(result.words[i] == 0U);
 }
@@ -131,14 +137,16 @@ static void test_invalid_inputs_preserve_result(void)
 {
     bignum_t a, b, result, before;
     const uint64_t one[] = { 1U };
-    set_words(&a, one, 1U); set_words(&b, one, 1U);
-    memset(&result, 0x5a, sizeof(result)); before = result;
-    assert(bignum_gcd(NULL, &a, &b) == BIGNUM_GCD_ERROR_NULL_ARG);
-    assert(bignum_gcd(&result, NULL, &b) == BIGNUM_GCD_ERROR_NULL_ARG);
-    assert(bignum_gcd(&result, &a, NULL) == BIGNUM_GCD_ERROR_NULL_ARG);
+    set_words(&a, one, 1U);
+    set_words(&b, one, 1U);
+    memset(&result, 0x5a, sizeof(result));
+    before = result;
+    assert(bignum_gcd(NULL, &a, &b, NULL) == BIGNUM_GCD_ERROR_NULL_ARG);
+    assert(bignum_gcd(&result, NULL, &b, NULL) == BIGNUM_GCD_ERROR_NULL_ARG);
+    assert(bignum_gcd(&result, &a, NULL, NULL) == BIGNUM_GCD_ERROR_NULL_ARG);
     assert(memcmp(&result, &before, sizeof(result)) == 0);
     a.len = BIGNUM_CAPACITY + 1U;
-    assert(bignum_gcd(&result, &a, &b) == BIGNUM_GCD_ERROR_BAD_LENGTH);
+    assert(bignum_gcd(&result, &a, &b, NULL) == BIGNUM_GCD_ERROR_BAD_LENGTH);
     assert(memcmp(&result, &before, sizeof(result)) == 0);
 }
 
@@ -151,11 +159,13 @@ static void test_alias_rejection(void)
 {
     bignum_t a, b, before;
     const uint64_t av[] = { 84U }, bv[] = { 30U };
-    set_words(&a, av, 1U); set_words(&b, bv, 1U); before = a;
-    assert(bignum_gcd(&a, &a, &b) == BIGNUM_GCD_ERROR_OVERLAP);
+    set_words(&a, av, 1U);
+    set_words(&b, bv, 1U);
+    before = a;
+    assert(bignum_gcd(&a, &a, &b, NULL) == BIGNUM_GCD_ERROR_OVERLAP);
     assert(memcmp(&a, &before, sizeof(a)) == 0);
     before = b;
-    assert(bignum_gcd(&b, &a, &b) == BIGNUM_GCD_ERROR_OVERLAP);
+    assert(bignum_gcd(&b, &a, &b, NULL) == BIGNUM_GCD_ERROR_OVERLAP);
     assert(memcmp(&b, &before, sizeof(b)) == 0);
 }
 
